@@ -1124,6 +1124,8 @@ var _gsScope = (typeof(module) !== "undefined" && module.exports && typeof(globa
 				this.autoScroll = vars.autoScroll || 0;
 				this.lockedAxis = null;
 				this.allowEventDefault = !!vars.allowEventDefault;
+				this.scrollThresold = vars.scrollThresold || -1;
+				this.scrollDirection = vars.scrollDirection;
 				var type = (vars.type || (_isOldIE ? "top,left" : "x,y")).toLowerCase(),
 					xyMode = (type.indexOf("x") !== -1 || type.indexOf("y") !== -1),
 					rotationMode = (type.indexOf("rotation") !== -1),
@@ -1592,6 +1594,7 @@ var _gsScope = (typeof(module) !== "undefined" && module.exports && typeof(globa
 
 					//called every time the mouse/touch moves
 					onMove = function(e) {
+						
 						var originalEvent = e,
 							touches, pointerX, pointerY, i;
 						if (!enabled || _isMultiTouching || !self.isPressed || !e) {
@@ -1644,7 +1647,11 @@ var _gsScope = (typeof(module) !== "undefined" && module.exports && typeof(globa
 						if (self.autoScroll) {
 							checkAutoScrollBounds = true;
 						}
-						setPointerPosition(e.pageX, e.pageY);
+						var willBlockEvent = setPointerPosition(e.pageX, e.pageY);
+						if(willBlockEvent){
+							originalEvent.preventDefault();
+							originalEvent.stopPropagation();
+						}
 					},
 
 					setPointerPosition = function(pointerX, pointerY) {
@@ -1723,15 +1730,35 @@ var _gsScope = (typeof(module) !== "undefined" && module.exports && typeof(globa
 							x = Math.round(x); //helps work around an issue with some Win Touch devices
 							y = Math.round(y);
 						}
+
+						if(!self.scrollDirection){
+							self.hasPassDragThresold = true;
+						}else if(!self.hasPassDragThresold && ! self.lockedScroll){
+							if(self.scrollDirection() == 'horizontal'){
+								self.hasPassDragThresold = Math.abs(yChange)>self.scrollThresold;
+								self.lockedScroll = Math.abs(xChange)>self.scrollThresold;
+							}else{
+								self.hasPassDragThresold = Math.abs(xChange)>self.scrollThresold;
+								self.lockedScroll = Math.abs(yChange)>self.scrollThresold;
+							}
+
+							if(self.hasPassDragThresold){
+								self.lockedScroll = true;
+								_dispatchEvent(self, "scrollThresoldPass", "onScrollThresoldPass");
+							}
+						}
+
 						if (self.x !== x || (self.y !== y && !rotationMode)) {
-							if (rotationMode) {
-								self.endRotation = self.x = self.endX = x;
-							} else {
-								if (allowY) {
-									self.y = self.endY = y;
-								}
-								if (allowX) {
-									self.x = self.endX = x;
+							if(self.hasPassDragThresold){
+								if (rotationMode) {
+									self.endRotation = self.x = self.endX = x;
+								} else {
+									if (allowY) {
+										self.y = self.endY = y;
+									}
+									if (allowX) {
+										self.x = self.endX = x;
+									}
 								}
 							}
 							dirty = true; //a flag that indicates we need to render the target next time the TweenLite.ticker dispatches a "tick" event (typically on a requestAnimationFrame) - this is a performance optimization (we shouldn't render on every move because sometimes many move events can get dispatched between screen refreshes, and that'd be wasteful to render every time)
@@ -1740,10 +1767,13 @@ var _gsScope = (typeof(module) !== "undefined" && module.exports && typeof(globa
 								_dispatchEvent(self, "dragstart", "onDragStart");
 							}
 						}
+						return self.hasPassDragThresold;
 					},
 
 					//called when the mouse/touch is released
 					onRelease = function(e, force) {
+						self.hasPassDragThresold = false;
+						self.lockedScroll = false;
 						if (!enabled || !self.isPressed || (e && touchID != null && !force && ((e.pointerId && e.pointerId !== touchID) || (e.changedTouches && !_hasTouchID(e.changedTouches, touchID))))) {  //for some Microsoft browsers, we must attach the listener to the doc rather than the trigger so that when the finger moves outside the bounds of the trigger, things still work. So if the event we're receiving has a pointerId that doesn't match the touchID, ignore it (for multi-touch)
 							return;
 						}
