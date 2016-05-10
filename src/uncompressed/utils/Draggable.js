@@ -2064,7 +2064,7 @@ var _gsScope = (typeof(module) !== "undefined" && module.exports && typeof(globa
 								_setStyle(trigger, "cursor", vars.cursor || "move");
 							}
 							_setStyle(trigger, "touchCallout", "none");
-							_setStyle(trigger, "touchAction", (allowX === allowY || scrollProxy) ? "none" : allowX ? "pan-y" : "pan-x");
+							// _setStyle(trigger, "touchAction", (allowX === allowY || scrollProxy) ? "none" : allowX ? "pan-y" : "pan-x");
 						}
 						_setSelectable(triggers, false);
 					}
