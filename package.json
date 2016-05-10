@@ -38,6 +38,8 @@
    "repository": {
       "type": "git",
       "url": "https://github.com/greensock/GreenSock-JS" 
-   } 
-
+   },
+   "directories": {
+          "lib": "src/uncompressed"
+    }
 }
